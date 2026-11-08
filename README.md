@@ -142,6 +142,19 @@ Installed Pi-Bolt smoke checks confirm extension loading, `--model tier/medium`,
 and all three aliases in `--list-models tier` without sending model requests.
 See `VERIFICATION.md` for exact results and remaining manual checks.
 
+## Publishing
+
+`.github/workflows/publish.yml` tests and publishes the package to npm when a
+GitHub Release is published. Configure npm Trusted Publishing once for
+`@mevsgame/pi-model-alias-profiles` with GitHub Actions, owner `mevsgame`,
+repository `pi-model-alias-profiles`, and workflow `publish.yml` (no environment).
+No npm token secret is needed. Stable releases publish under `latest`; GitHub
+prereleases publish under `next`.
+
+For each release, update `version` in `package.json` and `package-lock.json`,
+push the change and a matching `vX.Y.Z` tag, then publish a GitHub Release for
+that tag. The workflow checks the tag/version match before publishing.
+
 ## License and links
 
 MIT. [Source and issues](https://github.com/mevsgame/pi-model-alias-profiles).
