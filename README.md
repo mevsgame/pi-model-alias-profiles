@@ -1,8 +1,21 @@
-# pi-model-profiles
+# Pi Model Alias
 
 Stable native Pi virtual models: `tier/large`, `tier/medium`, and `tier/small`.
 Each resolves to exactly one configured physical model in the active profile.
 No classifier, fallback, proxy, provider replacement, or core modifications.
+Unlike classifier-based routers, the alias always uses the mapping you choose;
+switch profiles explicitly to change those mappings. Other Pi model-alias
+packages exist; this extension additionally provides switchable profiles.
+
+## Installation
+
+Requires a Pi version supporting virtual models (tested with Pi 1.5.0).
+Configure and authenticate each physical model's provider in Pi before
+activating a profile. An alias does not supply provider credentials.
+
+```sh
+pi install npm:@mevsgame/pi-model-alias-profiles
+```
 
 ## First use
 
@@ -97,6 +110,19 @@ Other processes do not change this process's active profile. After a process
 crash, a stale `.lock` may require removal after confirming no writer is active.
 Local atomic-rename/lock semantics are assumed; network filesystems may differ.
 
+## Known limitations and troubleshooting
+
+- Another extension registering `tier/large`, `tier/medium`, or `tier/small`
+  can replace these virtual models. The `/model-profile`, `/model-profiles`,
+  `/tier` commands and shortcuts may also conflict with other extensions.
+- If activation fails, check all three mappings exist in Pi's model registry and
+  their providers are authenticated. Provider errors do not trigger fallback.
+- If shortcuts do not work, inspect `/hotkeys` and use the slash commands; some
+  terminals cannot distinguish the required modifiers.
+- Profile management requires Pi's interactive terminal UI. End-to-end paid
+  inference and some interactive scenarios remain unverified; see
+  [VERIFICATION.md](VERIFICATION.md).
+
 ## Development and verification
 
 ```sh
@@ -111,3 +137,7 @@ branch restoration, commands, shortcuts, and stable selection identity.
 Installed Pi-Bolt smoke checks confirm extension loading, `--model tier/medium`,
 and all three aliases in `--list-models tier` without sending model requests.
 See `VERIFICATION.md` for exact results and remaining manual checks.
+
+## License and links
+
+MIT. [Source and issues](https://github.com/mevsgame/pi-model-alias-profiles).

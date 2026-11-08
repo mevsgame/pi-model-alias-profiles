@@ -1,12 +1,21 @@
 {
-  "name": "pi-model-profiles",
+  "name": "@mevsgame/pi-model-alias-profiles",
   "version": "0.1.0",
   "type": "module",
-  "description": "Stable Pi model aliases with interactive, persistent profiles",
+  "description": "Deterministic Pi model aliases with switchable, persistent profiles",
   "license": "MIT",
+  "private": false,
+  "keywords": ["pi-package", "pi-extension", "model-alias", "model-profiles", "pi"],
+  "repository": { "type": "git", "url": "https://github.com/mevsgame/pi-model-alias-profiles.git" },
+  "homepage": "https://github.com/mevsgame/pi-model-alias-profiles#readme",
+  "bugs": { "url": "https://github.com/mevsgame/pi-model-alias-profiles/issues" },
+  "publishConfig": { "access": "public" },
   "pi": { "extensions": ["./index.ts"] },
-  "files": ["index.ts", "src", "README.md", "VERIFICATION.md"],
+  "files": ["index.ts", "src", "README.md", "LICENSE", "CHANGELOG.md", "VERIFICATION.md"],
   "scripts": { "test": "tsx --test tests/*.test.ts", "typecheck": "tsc --noEmit" },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "1.5.0",
     "@earendil-works/pi-tui": "1.5.0",
