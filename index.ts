@@ -4,6 +4,7 @@ import { ALIASES, ConfigStore, type Config, type Alias } from "./src/config.ts";
 import { route, validateProfile } from "./src/profiles.ts";
 import { branchProfile, STATE_ENTRY } from "./src/state.ts";
 import { manage, quickPicker, type Controller } from "./src/ui.ts";
+import { createUsageBridge } from "./src/usage.ts";
 
 export default function modelProfiles(pi: ExtensionAPI) {
   const store = new ConfigStore(join(getAgentDir(), "model-profiles.json"));
@@ -15,12 +16,14 @@ export default function modelProfiles(pi: ExtensionAPI) {
     if (ctx.hasUI) ctx.ui.notify(message, error ? "error" : "info");
     else console.error(`[model-profiles] ${message}`);
   };
+  const usage = createUsageBridge(pi, () => config, () => active);
   const status = (ctx: ExtensionContext) => {
     if (!ctx.hasUI) return;
     const alias = ctx.model?.provider === "tier" ? ctx.model.id as Alias : undefined;
     ctx.ui.setStatus("model-profiles", alias
       ? `${active ?? "no profile"} · ${alias} → ${active && config.profiles[active]?.[alias] || "(unconfigured)"}`
       : undefined);
+    if (pi.events) usage.update(ctx);
   };
   const record = () => pi.appendEntry(STATE_ENTRY, { profile: active ?? null });
   const controller: Controller = {
@@ -71,11 +74,14 @@ export default function modelProfiles(pi: ExtensionAPI) {
   };
   pi.on("session_start", (_event, ctx) => {
     restore(ctx);
+    if (pi.events) usage.start(ctx);
     if (loadError) report(ctx, String(loadError), true);
     else if (!Object.keys(config.profiles).length) report(ctx, "No model profiles configured. Run /model-profiles to create your first profile.");
   });
+  pi.on("session_shutdown", (_event, ctx) => { if (pi.events) usage.stop(ctx); });
   pi.on("session_tree", (_event, ctx) => restore(ctx));
   pi.on("model_select", (_event, ctx) => status(ctx));
+  pi.on("agent_end", (_event, ctx) => { if (pi.events) usage.update(ctx); });
   for (const alias of ALIASES) pi.registerVirtualModel({
     provider: "tier", id: alias, name: `Tier ${alias}`,
     thinkingLevels: ["off", "minimal", "low", "medium", "high", "xhigh"],

@@ -110,6 +110,10 @@ Other processes do not change this process's active profile. After a process
 crash, a stale `.lock` may require removal after confirming no writer is active.
 Local atomic-rename/lock semantics are assumed; network filesystems may differ.
 
+## Optional pi-usage integration
+
+When `@narumitw/pi-usage` is installed, selecting a tier queries its mapped physical provider through `usage:query:v1`. The separate `model-profiles-usage` footer item is cleared when the tier changes or its report expires. Queries may perform network requests. Without pi-usage there is no usage item. The installed pi-usage settings have no global status enable switch: its Anthropic status is gated by `anthropicExtraUsage`, and xAI is menu-only. The bridge respects these gates and Codex percentage/countdown preferences in `pi-usage.json`. Its compact formatter currently covers percentage buckets and Anthropic remaining spend; it does not reproduce pi-usage's full provider-specific formatting or custom `statuslineDisplay` templates.
+
 ## Known limitations and troubleshooting
 
 - Another extension registering `tier/large`, `tier/medium`, or `tier/small`
