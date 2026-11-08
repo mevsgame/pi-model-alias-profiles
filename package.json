@@ -1,0 +1,17 @@
+{
+  "name": "pi-model-profiles",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Stable Pi model aliases with interactive, persistent profiles",
+  "license": "MIT",
+  "pi": { "extensions": ["./index.ts"] },
+  "files": ["index.ts", "src", "README.md", "VERIFICATION.md"],
+  "scripts": { "test": "tsx --test tests/*.test.ts", "typecheck": "tsc --noEmit" },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "1.5.0",
+    "@earendil-works/pi-tui": "1.5.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}
