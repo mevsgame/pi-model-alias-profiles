@@ -1,13 +1,16 @@
 import { getAgentDir, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { join } from "node:path";
 import { ALIASES, ConfigStore, type Config, type Alias } from "./src/config.ts";
-import { route, validateProfile } from "./src/profiles.ts";
-import { branchProfile, STATE_ENTRY } from "./src/state.ts";
+import { route, validateProfile, resolveTarget } from "./src/profiles.ts";
+import promptProfiles from "./src/prompt-profiles/index.ts";
+import { STATE_ENTRY } from "./src/state.ts";
+import { DirectoryStore } from "./src/directory.ts";
 import { manage, quickPicker, type Controller } from "./src/ui.ts";
 import { createUsageBridge } from "./src/usage.ts";
 
 export default function modelProfiles(pi: ExtensionAPI) {
   const store = new ConfigStore(join(getAgentDir(), "model-profiles.json"));
+  const directories = new DirectoryStore(join(getAgentDir(), "model-profile-directories.json"));
   let config: Config = { version: 1, profiles: {} };
   let active: string | undefined;
   let loadError: unknown;
@@ -17,11 +20,17 @@ export default function modelProfiles(pi: ExtensionAPI) {
     else console.error(`[model-profiles] ${message}`);
   };
   const usage = createUsageBridge(pi, () => config, () => active);
+  // Prompt-profile bindings follow the physical model, not the stable alias.
+  if (typeof pi.registerFlag === "function") promptProfiles(pi, ctx => {
+    if (ctx.model?.provider !== "tier" || !(ALIASES as readonly string[]).includes(ctx.model.id)) return ctx.model;
+    if (loadError) throw loadError;
+    return resolveTarget(active, ctx.model.id as Alias, config, ctx.modelRegistry);
+  });
   const status = (ctx: ExtensionContext) => {
     if (!ctx.hasUI) return;
     const alias = ctx.model?.provider === "tier" ? ctx.model.id as Alias : undefined;
     ctx.ui.setStatus("model-profiles", alias
-      ? `${active ?? "no profile"} · ${alias} → ${active && config.profiles[active]?.[alias] || "(unconfigured)"}`
+      ? `${active ?? "no profile"} · tier/${alias} → ${active && config.profiles[active]?.[alias] || "(unconfigured)"}`
       : undefined);
     if (pi.events) usage.update(ctx);
   };
@@ -31,9 +40,7 @@ export default function modelProfiles(pi: ExtensionAPI) {
     getActive: () => active,
     activate(name, ctx) {
       validateProfile(name, config, ctx.modelRegistry);
-      const next = { ...config, lastActiveProfile: name };
-      store.save(next);
-      config = next;
+      directories.write(ctx.cwd, name);
       active = name;
       record();
       status(ctx);
@@ -42,9 +49,9 @@ export default function modelProfiles(pi: ExtensionAPI) {
     },
     commit(next, selection, ctx) {
       if (selection) validateProfile(selection, next, ctx.modelRegistry);
-      if (selection) next.lastActiveProfile = selection;
       store.save(next);
       const changed = active !== selection;
+      if (changed) directories.write(ctx.cwd, selection ?? null);
       config = next;
       active = selection;
       if (changed) record();
@@ -56,19 +63,18 @@ export default function modelProfiles(pi: ExtensionAPI) {
       status(ctx);
     },
   };
+  // The starting directory decides the active profile; session entries are history only.
   const restore = (ctx: ExtensionContext) => {
-    const saved = branchProfile(ctx.sessionManager.getBranch());
+    active = undefined;
+    let saved: string | null | undefined;
+    try { saved = directories.read(ctx.cwd); }
+    catch (error) { report(ctx, String(error), true); status(ctx); return; }
     if (saved !== undefined) {
-      active = saved ?? undefined; // Never silently replace a missing session profile.
+      active = saved ?? undefined; // Never silently replace a missing or invalid directory profile.
       try { if (saved) validateProfile(saved, config, ctx.modelRegistry); }
       catch (error) { report(ctx, String(error), true); }
-    } else {
-      active = undefined;
-      for (const name of [config.lastActiveProfile, config.defaultProfile]) {
-        if (!name) continue;
-        try { validateProfile(name, config, ctx.modelRegistry); active = name; break; } catch {}
-      }
-      record(); // Pin the initial selection to this branch, independent of future global changes.
+    } else if (config.defaultProfile) {
+      try { validateProfile(config.defaultProfile, config, ctx.modelRegistry); active = config.defaultProfile; } catch {}
     }
     status(ctx);
   };

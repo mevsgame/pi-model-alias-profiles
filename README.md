@@ -76,7 +76,6 @@ Configuration lives at `<agent-dir>/model-profiles.json`, resolved with Pi's
 {
   "version": 1,
   "defaultProfile": "work",
-  "lastActiveProfile": "work",
   "profiles": {
     "work": {
       "large": "provider/exact-large-model-id",
@@ -93,22 +92,51 @@ stored here. Availability checks detect configured authentication, not whether a
 remote server will accept an expired/revoked credential; provider errors remain
 visible and never trigger fallback.
 
-Global definitions and last-used selection are separate from branch-local
-`model-profiles.selection` custom session entries (not sent to the LLM).
-New sessions choose the valid last-used profile, then valid default; existing
-branches restore their own selection, including an explicit no-profile state.
-A missing/renamed saved profile is reported, not silently substituted: select a
+The active profile is per working directory, so each git worktree or project
+can run a different profile. The choices live in one file in the agent dir,
+`<agent-dir>/model-profile-directories.json`, mapping each directory's real path
+to a profile (or `null` for an explicit no-profile state):
+
+```json
+{
+  "version": 1,
+  "directories": {
+    "/home/me/project": "work",
+    "/home/me/project-feature": "personal"
+  }
+}
+```
+
+The key is the directory Pi started in, resolved with `realpath`, so symlinked
+paths share one entry. Switching a profile rewrites only its own key under an
+exclusive lock, keeping the other entries. Git never sees this file. A directory
+with no saved choice uses the valid global `defaultProfile`. Set it with
+**Set default** in `/model-profiles`.
+
+Branch-local `model-profiles.selection` custom session entries (not sent to the
+LLM) are kept as history only; they do not choose the active profile. A
+missing or renamed saved profile is reported, not silently substituted: select a
 replacement explicitly. Definitions remain global; editing them affects future
-requests in sessions that load those definitions.
+requests in all directories. A legacy `lastActiveProfile` key is ignored and
+removed the next time the global file is saved.
 
 Writes use exclusive locks, content-based conflict detection, and atomic rename.
 Failed writes do not update runtime selection. Malformed/unsupported config is
 preserved and blocks writes/routing. Repair the file, then use management's
 **Reload configuration from disk**. The same explicit reload accepts external
 changes after a conflict; there is no automatic cross-process synchronization.
-Other processes do not change this process's active profile. After a process
-crash, a stale `.lock` may require removal after confirming no writer is active.
+Other windows in the same directory share the choice; a switch in one window is
+seen by the next session start or tree change in another. Switching does not
+touch `model-profiles.json`, so it cannot conflict with profile edits in other
+windows. After a process crash, a stale `.lock` (for the global file or the
+directory map) may require removal after confirming no writer is active.
 Local atomic-rename/lock semantics are assumed; network filesystems may differ.
+
+## Prompt profiles
+
+This package includes a modified, vendored copy of [pi-prompt-profiles](https://github.com/Yivas/pi-prompt-profiles) 0.11.1 by Yivas (MIT; see `src/prompt-profiles/LICENSE`). **The two plugins conflict:** disable or uninstall the standalone `pi-prompt-profiles` extension before loading this package, because both register `/sp` commands and prompt hooks. Existing `system-prompts` configuration, profiles, commands, flags and session selections are used by the bundled copy.
+
+For `tier/*`, automatic prompt bindings match the current mapped physical model rather than the alias. Direct physical model selections continue to match normally. Switching model profiles changes the binding on the next run. The `/sp` status and diagnostics still display the selected virtual model; they do not report the physical binding identity. The bundled version is a snapshot and is not automatically updated when the standalone package is updated.
 
 ## Optional pi-usage integration
 
@@ -121,6 +149,9 @@ When `@narumitw/pi-usage` is installed, selecting a tier queries its mapped phys
   `/tier` commands and shortcuts may also conflict with other extensions.
 - If activation fails, check all three mappings exist in Pi's model registry and
   their providers are authenticated. Provider errors do not trigger fallback.
+- Child agents spawned in an isolated worktree start with that worktree's
+  directory entry; without one they use the global `defaultProfile`. A moved or
+  re-cloned directory has a new key and falls back to `defaultProfile`.
 - If shortcuts do not work, inspect `/hotkeys` and use the slash commands; some
   terminals cannot distinguish the required modifiers.
 - Profile management requires Pi's interactive terminal UI. End-to-end paid

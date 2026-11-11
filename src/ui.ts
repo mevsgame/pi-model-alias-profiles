@@ -147,7 +147,6 @@ export async function manage(ctx: ExtensionContext, controller: Controller): Pro
             delete config.profiles[name];
             if (active === name) active = next;
             if (config.defaultProfile === name) config.defaultProfile = next;
-            if (config.lastActiveProfile === name) config.lastActiveProfile = next;
           }
         } else if (action === "Delete") {
           if (active === name) {
@@ -162,10 +161,6 @@ export async function manage(ctx: ExtensionContext, controller: Controller): Pro
           if (config.defaultProfile === name) {
             if (active) config.defaultProfile = active;
             else delete config.defaultProfile;
-          }
-          if (config.lastActiveProfile === name) {
-            if (active) config.lastActiveProfile = active;
-            else delete config.lastActiveProfile;
           }
         } else if (action === "Set default") {
           validateProfile(name, config, ctx.modelRegistry);

@@ -8,6 +8,7 @@ export type Profile = Partial<Record<Alias, string>>;
 export interface Config {
   version: 1;
   defaultProfile?: string;
+  /** Legacy, ignored: the active profile is per directory (see directory.ts). Accepted so old files still load. */
   lastActiveProfile?: string;
   profiles: Record<string, Profile>;
 }
